@@ -25,11 +25,38 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mmio.h"
+#include "cilk/cilk.h"
 
 double random_in_range(double min, double max)
 {
     double f = (double)rand() / RAND_MAX;
     return min + f * (max - min);
+}
+
+void read_in_CSR(int* I, int* J, int M, int N, int nz, int* CSR_count, int* CSR_col)
+{
+    int row, col, p;
+    int count_nz;
+
+    cilk_for (row=0; row<M; row++)
+    {
+        fprintf(stdout, "row: %d\n", row);
+        count_nz = 0;
+        cilk_for (col=0; col<N; col++)
+        {
+            //fprintf(stdout, "col: %d\n", col);
+            cilk_for (p=0; p<nz; p++)
+            {
+                if (I[p]==row && J[p]==col)
+                {
+                    CSR_col[count_nz + CSR_count[row]] = col;
+                    count_nz++;
+                }
+            }
+
+            CSR_count[row+1] = CSR_count[row] + count_nz;            
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -38,8 +65,8 @@ int main(int argc, char *argv[])
     MM_typecode matcode;
     FILE *f;
     int M, N, nz;   
-    int i, *I, *J;
-    double *val, *vector;
+    int i, j, *I, *J;
+    double *val, *vector, *result;
     int *CSR_count, *CSR_col;
 
     if (argc < 2)
@@ -88,36 +115,40 @@ int main(int argc, char *argv[])
         fscanf(f, "%d %d\n", &I[i], &J[i]);
         I[i]--;  /* adjust from 1-based to 0-based */
         J[i]--;
-        val[i] = random_in_range(0.1, 4.9);
+        val[i] = random_in_range(1, 1);
     }
 
     for (i=0; i<N; i++)
     {
-        vector[i] = random_in_range(0.1, 4.9);
+        vector[i] = random_in_range(3, 3);
     }
 
     CSR_count = (int *) malloc(M * sizeof(int) + 1);
     CSR_count[0] = 0;
     CSR_col = (int *) malloc(nz * sizeof(int));
 
-    int row, col, p;
-    int count_nz;
+    fprintf(stdout, "Reading in matrix...\n");
+    read_in_CSR(I, J, M, N, nz, CSR_count, CSR_col);
 
-    for (row=0; row<M; row++)
+    result = (double *) malloc(N * sizeof(double));
+
+    for (i=0; i<N; i++)
     {
-        count_nz = 0;
-        for (col=0; col<N; col++)
-        {
-            for (p=0; p<nz; p++)
-            {
-                if (I[p]==row && J[p]==col)
-                {
-                    CSR_col[count_nz + CSR_count[row]] = col;
-                    count_nz++;
-                }
-            }
+        result[i] = 0.0;
+    }
 
-            CSR_count[row+1] = CSR_count[row] + count_nz;            
+    fprintf(stdout, "Doing matrix multiplication...\n");
+    //CSR Matrix (triangular, symmetric) * Dense Vector
+    for (i=0; i<N; i++)
+    {
+        for(j=CSR_count[i]; j<CSR_count[i+1]; j++)
+        {
+            result[i] = result[i] + val[j] * vector[CSR_col[j]];
+
+            if (i != CSR_col[j]) //Symmetry multiplications
+            {
+                result[CSR_col[j]] = result[CSR_col[j]] + val[j] * vector[CSR_col[j]];
+            }
         }
     }
 
@@ -127,13 +158,10 @@ int main(int argc, char *argv[])
     /* now write out matrix */
     /************************/
 
-    mm_write_banner(stdout, matcode);
+    /*mm_write_banner(stdout, matcode);
     mm_write_mtx_crd_size(stdout, M, N, nz);
     for (i=0; i<nz; i++)
-        fprintf(stdout, "%d %d %20.19g\n", I[i]+1, J[i]+1, val[i]);
-
-    for (i=0; i<N; i++)
-        fprintf(stdout, "%20.19g\n", vector[i]);
+        fprintf(stdout, "%d %d\n", I[i], J[i]);
 
     for (i=0; i<M+1; i++)
         fprintf(stdout, "%d ", CSR_count[i]);
@@ -141,7 +169,12 @@ int main(int argc, char *argv[])
     fprintf(stdout, "\n");
 
     for (i=0; i<nz; i++)
-        fprintf(stdout, "%d ", CSR_col[i]);
+        fprintf(stdout, "%d ", CSR_col[i]);*/
+
+    fprintf(stdout, "\nRESULT:\n");
+
+    for (i=0; i<N; i++)
+        fprintf(stdout, "%20.19g\n", result[i]);
 
 	return 0;
 }
