@@ -1,5 +1,5 @@
 make:
-	g++ main.cpp CSRMatrix.cpp -o main
+	g++ main.cpp CSRMatrix.cpp mmio.c -o main -fopenmp
 	#gcc -c mmio.c
 	#gcc -c main.c -lcilkrts -ldl -fcilkplus
 	#gcc mmio.o main.o -o main -lcilkrts -ldl -fcilkplus
