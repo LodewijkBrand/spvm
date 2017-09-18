@@ -12,9 +12,9 @@ double* CSRMatrix::multiply(double* vector){
             result[i] = result[i] + nonzero_elements[j] * vector[column_index[j]];
 
             //Symmetry multiplications
-            //if (i != column_index[j]){
-            //    result[column_index[j]] = result[column_index[j]] + nonzero_elements[j] * vector[column_index[j]];
-            //}
+            if (i != column_index[j]){
+                result[column_index[j]] = result[column_index[j]] + nonzero_elements[j] * vector[column_index[j]];
+            }
         }
     }
 
@@ -30,9 +30,9 @@ double* CSRMatrix::parallel_multiply(double* vector){
             result[i] = result[i] + nonzero_elements[j] * vector[column_index[j]];
 
             //Symmetry multiplications
-            //if (i != column_index[j]){
-            //    result[column_index[j]] = result[column_index[j]] + nonzero_elements[j] * vector[column_index[j]];
-            //}
+            if (i != column_index[j]){
+                result[column_index[j]] = result[column_index[j]] + nonzero_elements[j] * vector[column_index[j]];
+            }
         }
     }
 
@@ -62,7 +62,7 @@ void CSRMatrix::print() {
     cout << "]" << endl;
 
     cout << "Column indices:   [";
-    for (int i = 0; i < num_cols; i++){
+    for (int i = 0; i < num_nz; i++){
         cout << column_index[i] << " ";
     }
     cout << "]" << endl;
