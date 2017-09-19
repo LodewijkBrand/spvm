@@ -1,4 +1,5 @@
 #include <iostream>
+#include <omp.h>
 
 #include "CSRMatrix.h"
 
@@ -23,17 +24,37 @@ double* CSRMatrix::multiply(double* vector){
 
 double* CSRMatrix::parallel_multiply(double* vector){
     double* result = new double[num_rows];
+   
 
-    #pragma omp parallel for 
-    for (int i = 0; i < num_rows; i++){
-        for (int j = count_nonzero[i]; j < count_nonzero[i+1]; j++){
-            result[i] = result[i] + nonzero_elements[j] * vector[column_index[j]];
+    #pragma omp parallel
+    {
+        double* partial = new double[num_rows];
 
-            //Symmetry multiplications
-            if (i != column_index[j]){
-                result[column_index[j]] = result[column_index[j]] + nonzero_elements[j] * vector[column_index[j]];
+        int tid = omp_get_thread_num();
+        int num = omp_get_num_threads();
+
+        int start = (int) ((double) tid / (double) num * (double) num_rows);
+        int end = (int) ((double) (tid + 1) / (double) num * (double) num_rows);
+
+        cout << "my ID: " << tid << endl;
+        cout << "Start: " << start << endl;
+        cout << "End: " << end << endl;
+        cout << "Num rows: " << num_rows << endl;
+
+        for (int i = start; i < end; i++){
+            for (int j = count_nonzero[i]; j < count_nonzero[i+1]; j++){
+                partial[i] = partial[i] + nonzero_elements[j] * vector[column_index[j]];
+
+                //Symmetry multiplications
+                if (i != column_index[j]){
+                    partial[column_index[j]] = partial[column_index[j]] + nonzero_elements[j] * vector[column_index[j]];
+                }
             }
         }
+
+        #pragma omp reduction(+:result)
+        for (int i = 0; i < num_rows; i++)
+            result[i] += partial[i];
     }
 
     return result;

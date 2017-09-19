@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/io.hpp>
@@ -58,13 +59,15 @@ CSRMatrix readMatrixMarket(char* filename, coordinate_matrix<double>& m_boost){
     int* J = new int[nz]; // Hold col coordinates
     double* val = new double[nz]; // Hold nonzero values
     for (int i = 0; i < nz; i++){
+        if (i % 1000000 == 0)
+            std::cout << i << " out of " << nz << std::endl;
         fscanf(f, "%d %d\n", &J[i], &I[i]); // Note how &J and &I are switched
         I[i]--; // adjust from 1-based to 0 based
         J[i]--;
         val[i] = random_in_range(1, 1); // FOR NOW... ALL VALUES == 1
 
-        m_boost(I[i], J[i]) = val[i];
-        m_boost(J[i], I[i]) = val[i];
+        //m_boost(I[i], J[i]) = val[i];
+        //m_boost(J[i], I[i]) = val[i];
     }
 
     // Initialize and fill CSRMatrix variables
@@ -106,6 +109,7 @@ int main(int argc, char** argv){
         exit(1);
     }
 
+    std::cout << "Reading in data..." << std::endl;
     coordinate_matrix<double> boost_m;
     CSRMatrix m = readMatrixMarket(argv[1], boost_m);
 
@@ -117,18 +121,36 @@ int main(int argc, char** argv){
         boost_vect(i) = vect[i];
     }
 
-    clock_t start_serial = clock();
+    timeval time; 
+
+    std::cout << "Serial SPMV..." << std::endl;
+    gettimeofday(&time, NULL);
+    double start_serial = time.tv_usec + 1000000.0 * time.tv_sec;
     double* result = m.multiply(vect);
-    clock_t end_serial = clock();
+    gettimeofday(&time, NULL);
+    double end_serial = time.tv_usec + 1000000.0 * time.tv_sec;
 
-    clock_t start_parallel = clock();
+    std::cout << "Parallel SPMV..." << std::endl;
+    gettimeofday(&time, NULL);
+    double start_parallel = time.tv_usec + 1000000.0 * time.tv_sec;
     double* result_parallel = m.parallel_multiply(vect);
-    clock_t end_parallel = clock();
+    gettimeofday(&time, NULL);
+    double end_parallel = time.tv_usec + 1000000.0 * time.tv_sec;
 
-    std::cout << "Time for serial multiply  : " << (end_serial - start_serial) << std::endl;
-    std::cout << "Time for paralell multiply: " << (end_parallel - start_parallel) << std::endl;
+    std::cout << "Time for serial multiply  : " << (end_serial - start_serial) << " microseconds." << std::endl;
+    std::cout << "Time for paralell multiply: " << (end_parallel - start_parallel) << " microseconds." << std::endl;
+
+    for (int i = 0; i < m.getNumRows(); i++){
+        if (result[i] != result_parallel[i]){
+            std::cout << "Parallel and Serial SPMV are Different!" << std::endl;
+            exit(1);
+        }
+    }
+
+    std::cout << "Serial and Parallel SPMV Implementations Give Identical Answers!" << std::endl;
 
     //Check results against Boost
+    /*std::cout << "Boost C++ SPMV..." << std::endl;
     vector<double> boost_result(m.getNumRows());
     boost_result = prod(boost_m, boost_vect);
 
@@ -148,5 +170,5 @@ int main(int argc, char** argv){
         }
     }
 
-    std::cout << "Parallel Implementation of SPMV was Successful!" << std::endl;
+    std::cout << "Parallel Implementation of SPMV was Successful!" << std::endl;*/
 }
