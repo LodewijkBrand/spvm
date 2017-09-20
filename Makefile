@@ -1,11 +1,10 @@
 make:
-	g++ -I boost_1_65_1 main.cpp CSRMatrix.cpp mmio.c -o main -fopenmp
-	#gcc -c mmio.c
-	#gcc -c main.c -lcilkrts -ldl -fcilkplus
-	#gcc mmio.o main.o -o main -lcilkrts -ldl -fcilkplus
+	g++ main.cpp CSRMatrix.cpp mmio.c -o main -fopenmp
 
 run:
-	./main example.mtx
+	./main channel-500x100x100-b050.mtx
+	./main delaunay_n19.mtx
+	./main NLR.mtx
 
 clean:
 	rm *.o

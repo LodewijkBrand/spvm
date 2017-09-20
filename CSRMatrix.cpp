@@ -23,8 +23,7 @@ double* CSRMatrix::multiply(double* vector){
 }
 
 double* CSRMatrix::parallel_multiply(double* vector){
-    double* result = new double[num_rows];
-   
+    double* result = new double[num_rows]; 
 
     #pragma omp parallel
     {
@@ -35,11 +34,6 @@ double* CSRMatrix::parallel_multiply(double* vector){
 
         int start = (int) ((double) tid / (double) num * (double) num_rows);
         int end = (int) ((double) (tid + 1) / (double) num * (double) num_rows);
-
-        cout << "my ID: " << tid << endl;
-        cout << "Start: " << start << endl;
-        cout << "End: " << end << endl;
-        cout << "Num rows: " << num_rows << endl;
 
         for (int i = start; i < end; i++){
             for (int j = count_nonzero[i]; j < count_nonzero[i+1]; j++){
@@ -52,9 +46,9 @@ double* CSRMatrix::parallel_multiply(double* vector){
             }
         }
 
-        #pragma omp reduction(+:result)
         for (int i = 0; i < num_rows; i++)
-            result[i] += partial[i];
+            #pragma omp atomic
+            result[i] += partial[i]; // Note: Only one thread at a time should access result[i] at a time
     }
 
     return result;

@@ -2,21 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/vector.hpp>
-#include <boost/numeric/ublas/io.hpp>
 
 #include "CSRMatrix.h"
 #include "mmio.h"
-
-using namespace boost::numeric::ublas;
 
 double random_in_range(double min, double max){
     double f = (double)rand() / RAND_MAX;
     return min + f * (max - min);
 }
 
-CSRMatrix readMatrixMarket(char* filename, coordinate_matrix<double>& m_boost){
+CSRMatrix readMatrixMarket(char* filename){
     FILE *f;
     MM_typecode matcode;
     int ret_code;
@@ -45,9 +40,6 @@ CSRMatrix readMatrixMarket(char* filename, coordinate_matrix<double>& m_boost){
         exit(1);
     }
 
-    //Initialize coordinate_matrix
-    m_boost = coordinate_matrix<double> (rows, cols, nz);
-
     // Note: MatrixMarket file format for our large matrices looks like this
     // row col   22  1
     // row col   111 1
@@ -59,15 +51,10 @@ CSRMatrix readMatrixMarket(char* filename, coordinate_matrix<double>& m_boost){
     int* J = new int[nz]; // Hold col coordinates
     double* val = new double[nz]; // Hold nonzero values
     for (int i = 0; i < nz; i++){
-        if (i % 1000000 == 0)
-            std::cout << i << " out of " << nz << std::endl;
         fscanf(f, "%d %d\n", &J[i], &I[i]); // Note how &J and &I are switched
         I[i]--; // adjust from 1-based to 0 based
         J[i]--;
-        val[i] = random_in_range(1, 1); // FOR NOW... ALL VALUES == 1
-
-        //m_boost(I[i], J[i]) = val[i];
-        //m_boost(J[i], I[i]) = val[i];
+        val[i] = random_in_range(1, 1);
     }
 
     // Initialize and fill CSRMatrix variables
@@ -109,37 +96,32 @@ int main(int argc, char** argv){
         exit(1);
     }
 
-    std::cout << "Reading in data..." << std::endl;
-    coordinate_matrix<double> boost_m;
-    CSRMatrix m = readMatrixMarket(argv[1], boost_m);
+    // Reading in data to CSRMatrix
+    CSRMatrix m = readMatrixMarket(argv[1]);
 
+    // Fill in dense vector
     double* vect = new double[m.getNumCols()];
-    vector<double> boost_vect (m.getNumCols());
-
     for (int i = 0; i < m.getNumCols(); i++){
         vect[i] = random_in_range(1, 1);
-        boost_vect(i) = vect[i];
     }
 
     timeval time; 
 
-    std::cout << "Serial SPMV..." << std::endl;
+    // Timing serial SMPV Execution
     gettimeofday(&time, NULL);
     double start_serial = time.tv_usec + 1000000.0 * time.tv_sec;
     double* result = m.multiply(vect);
     gettimeofday(&time, NULL);
     double end_serial = time.tv_usec + 1000000.0 * time.tv_sec;
 
-    std::cout << "Parallel SPMV..." << std::endl;
+    // Timing parallel SMPV Execution
     gettimeofday(&time, NULL);
     double start_parallel = time.tv_usec + 1000000.0 * time.tv_sec;
     double* result_parallel = m.parallel_multiply(vect);
     gettimeofday(&time, NULL);
     double end_parallel = time.tv_usec + 1000000.0 * time.tv_sec;
 
-    std::cout << "Time for serial multiply  : " << (end_serial - start_serial) << " microseconds." << std::endl;
-    std::cout << "Time for paralell multiply: " << (end_parallel - start_parallel) << " microseconds." << std::endl;
-
+    // Check to see if Serial and Parallel SPMV agree. If not exit(1)
     for (int i = 0; i < m.getNumRows(); i++){
         if (result[i] != result_parallel[i]){
             std::cout << "Parallel and Serial SPMV are Different!" << std::endl;
@@ -147,28 +129,7 @@ int main(int argc, char** argv){
         }
     }
 
-    std::cout << "Serial and Parallel SPMV Implementations Give Identical Answers!" << std::endl;
-
-    //Check results against Boost
-    /*std::cout << "Boost C++ SPMV..." << std::endl;
-    vector<double> boost_result(m.getNumRows());
-    boost_result = prod(boost_m, boost_vect);
-
-    for (int i = 0; i < m.getNumRows(); i++){
-        if (result[i] != boost_result(i)){
-            std::cout << "Serial Implementation Failed SPMV!" << std::endl;
-            exit(1);
-        }
-    }
-
-    std::cout << "Serial Implementation of SPMV was Successful!" << std::endl;
-
-    for (int i = 0; i < m.getNumRows(); i++){
-        if (result_parallel[i] != boost_result(i)){
-            std::cout << "Parallel Implementation Failed SPMV!" << std::endl;
-            exit(1);
-        }
-    }
-
-    std::cout << "Parallel Implementation of SPMV was Successful!" << std::endl;*/
+    // Report results
+    std::cout << "Time for serial multiply  : " << (end_serial - start_serial) << " microseconds." << std::endl;
+    std::cout << "Time for paralell multiply: " << (end_parallel - start_parallel) << " microseconds." << std::endl;
 }
