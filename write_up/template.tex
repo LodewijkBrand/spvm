@@ -1,0 +1,149 @@
+\documentclass[pageno]{jpaper}
+
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{subcaption}
+
+\begin{document}
+
+\title{
+SPMV Implementation}
+\author{
+Lodewijk Brand}
+\date{}
+\maketitle
+
+
+\thispagestyle{empty}
+
+\begin{abstract}
+Sparse matrix vector multiplication (SPMV) is an interesting problem that 
+lends itself nicely to parallel programming applications. In this paper we 
+discuss an optimization technique using the compressed sparse row (CSR)
+format to multiply a large sparse matrix by a dense vector. The algorithm
+is parallelized and the optimization results are reported.
+\end{abstract}
+
+\section{Introduction}
+Sparse matrices are used in a wide variety of applications from  computer 
+graphics, to machine learning. The wide range of applications using sparse
+matrix vector multiplication (SPMV) makes it an important optimization topic
+in high performance computing.
+
+\section{Methods}
+The input sparse matrices are stored in a Matrix Market format and are 
+read into an object representing a compressed sparse row (CSR) matrix using
+an I/O library developed by NIST\cite{matrixmarket}. 
+
+The CSR format (see Figure ~\ref{fig:csrformat}) gives us the ability to represent a sparse matrix without 
+needing to store the elements containing zeros. This format allows us
+to leaverage spatial locality that is not present in the naive representation
+of a sparse matrix (see Figure ~\ref{fig:naivevscsr}). 
+
+\begin{figure}[b]
+    \begin{lstlisting}[language=C++]
+/* Stores non-zero values. */
+double* vals = new double[nz];
+    
+/* Counts number of non-zero elements */
+/* in a perticular row (cumulative).  */
+int* cnt_nz = new int[rows + 1];  
+    
+/* Stores the column index of each */
+/* corresponding non-zero element. */
+int* col_idx = new int[nz];
+    \end{lstlisting}
+    \caption{CSR Matrix Format}
+    \label{fig:csrformat}
+\end{figure}
+
+In addition to the CSR format, the vector multiplication method contains logic
+to take advantage of the symmetric nature of our input matrices. This halves
+the memory footprint of the CSR matrix and doubles the temporal locality of our 
+algorithm. The algorithm\cite{csrmultiplication} was derived from the notes of
+a Software Systems class taught at Emory University by Professor Cheung.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[b]{0.2\textwidth}
+    \[
+    \begin{bmatrix}
+0 & 0 & 0 & 0 \\
+5 & 8 & 0 & 0 \\
+0 & 0 & 3 & 0 \\
+0 & 6 & 0 & 0
+    \end{bmatrix}
+    \]
+    \caption{Naive Matrix Storage}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.25\textwidth}
+    \begin{lstlisting}
+vals    = [5 8 3 6]
+cnt_nz  = [0 0 2 3 4]
+col_idx = [0 1 2 1]
+    \end{lstlisting}
+    \caption{CSR Matrix}
+    \end{subfigure}
+    \caption{Naive Matrix vs. CSR}
+    \label{fig:naivevscsr}
+\end{figure}
+
+This algorithm is parallelized using OpenMP and the optimizations (over the
+serial version) are recorded. The parallel algorithm is compared to the 
+serial version to detect any "data-race" problems that may lead to an 
+inaccurate SPMV calculation. Verification with a library like 
+\textit{Boost C++} was attempted but due to performance issues on large 
+matrices it was discarded in favor of the faster serial SPMV implementation.
+
+\section{Experimental Results}
+
+The serial and parallel implementations of SPVM were run on my laptop and
+on \textit{MIO} (a Mines HPC resource for students). The data from a
+representative run in each environment is recorded in Figure ~\ref{fig:results}.
+
+\begin{figure}
+\centering
+\begin{tabular}{|c|c|c|c|}
+    \hline
+    \multicolumn{4}{|c|}{Laptop Timing ($\mu$s)} \\
+    \hline
+    Matrix & Serial & Parallel & Speed-Up\\
+    \hline
+    channel.mtx & 476545 & 327528 & 45\%\\
+    delaunay.mtx & 28031 & 27681 & 1\%\\
+    NLR.mtx & 539740 & 346915 & 56\%\\
+    \hline
+    \multicolumn{4}{c}{}
+\end{tabular}
+\begin{tabular}{|c|c|c|c|}
+    \hline
+    \multicolumn{4}{|c|}{MIO Timing ($\mu$s)}\\
+    \hline
+    Matrix & Serial & Parallel & Speed-Up\\
+    \hline
+    channel.mtx & 574603 & 217704 & 164\%\\
+    delaunay.mtx & 29768 & 53274 & -44\%\\
+    NLR.mtx & 470114 & 170422 & 176\%\\
+    \hline
+\end{tabular}
+\caption{SPMV Timing Results}
+    \label{fig:results}
+\end{figure}
+
+
+\section{Conclusion}
+Two conclusions can be drawn after running the SPVM implementation
+on my Laptop and on \textit{MIO}. First, the parallelized algorithm scales when
+distributed over more cores; this can be seen when looking at the "Speed-Up"
+values for the two larger matrices. Second, when a matrix is not sufficiently large 
+(like "delaunay.mtx") the overhead of multiple cores hurts performance.
+In the future it would be interesting to look at ways to optimize the kernel fucntion
+that distributes work to each core with respect to a symmetric CSR.
+
+
+\bstctlcite{bstctl:etal, bstctl:nodash, bstctl:simpurl}
+\bibliographystyle{IEEEtranS}
+\bibliography{references}
+
+\end{document}

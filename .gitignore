@@ -1,4 +1,10 @@
 *.mtx
 *.o
 main
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.pdf
 
