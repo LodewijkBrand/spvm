@@ -5,7 +5,11 @@ Welcome to Lou's parallel implementation of a SPMV! Follow the instructions belo
 to get up and running! Have fun!
 
 Build Instructions
-```make````
+```bash
+make
+```
 
 Running the SPMV Matrix Multiplications (after moving over the three .mtx files)
-```make run```
+```bash
+make run
+```
