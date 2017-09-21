@@ -96,40 +96,47 @@ int main(int argc, char** argv){
         exit(1);
     }
 
-    // Reading in data to CSRMatrix
-    CSRMatrix m = readMatrixMarket(argv[1]);
+    double total_time = 0;
 
-    // Fill in dense vector
-    double* vect = new double[m.getNumCols()];
-    for (int i = 0; i < m.getNumCols(); i++){
-        vect[i] = random_in_range(1, 1);
-    }
+    for (int arg_idx = 1; arg_idx < argc; arg_idx++){
+        // Reading in data to CSRMatrix
+        CSRMatrix m = readMatrixMarket(argv[arg_idx]);
 
-    timeval time; 
-
-    // Timing serial SMPV Execution
-    gettimeofday(&time, NULL);
-    double start_serial = time.tv_usec + 1000000.0 * time.tv_sec;
-    double* result = m.multiply(vect);
-    gettimeofday(&time, NULL);
-    double end_serial = time.tv_usec + 1000000.0 * time.tv_sec;
-
-    // Timing parallel SMPV Execution
-    gettimeofday(&time, NULL);
-    double start_parallel = time.tv_usec + 1000000.0 * time.tv_sec;
-    double* result_parallel = m.parallel_multiply(vect);
-    gettimeofday(&time, NULL);
-    double end_parallel = time.tv_usec + 1000000.0 * time.tv_sec;
-
-    // Check to see if Serial and Parallel SPMV agree. If not exit(1)
-    for (int i = 0; i < m.getNumRows(); i++){
-        if (result[i] != result_parallel[i]){
-            std::cout << "Parallel and Serial SPMV are Different!" << std::endl;
-            exit(1);
+        // Fill in dense vector
+        double* vect = new double[m.getNumCols()];
+        for (int i = 0; i < m.getNumCols(); i++){
+            vect[i] = random_in_range(1, 1);
         }
+
+        timeval time; 
+
+        // Timing serial SMPV Execution
+        gettimeofday(&time, NULL);
+        double start_serial = time.tv_usec + 1000000.0 * time.tv_sec;
+        double* result = m.multiply(vect);
+        gettimeofday(&time, NULL);
+        double end_serial = time.tv_usec + 1000000.0 * time.tv_sec;
+
+        // Timing parallel SMPV Execution
+        gettimeofday(&time, NULL);
+        double start_parallel = time.tv_usec + 1000000.0 * time.tv_sec;
+        double* result_parallel = m.parallel_multiply(vect);
+        gettimeofday(&time, NULL);
+        double end_parallel = time.tv_usec + 1000000.0 * time.tv_sec;
+
+        // Check to see if Serial and Parallel SPMV agree. If not exit(1)
+        for (int i = 0; i < m.getNumRows(); i++){
+            if (result[i] != result_parallel[i]){
+                std::cout << "Parallel and Serial SPMV are Different!" << std::endl;
+                exit(1);
+            }
+        }
+
+        // Report results
+        //std::cout << "Time for serial multiply  : " << (end_serial - start_serial) << " microseconds." << std::endl;
+        //std::cout << "Time for paralell multiply: " << (end_parallel - start_parallel) << " microseconds." << std::endl;
+        total_time += (end_parallel - start_parallel);
     }
 
-    // Report results
-    std::cout << "Time for serial multiply  : " << (end_serial - start_serial) << " microseconds." << std::endl;
-    std::cout << "Time for paralell multiply: " << (end_parallel - start_parallel) << " microseconds." << std::endl;
+    std::cout << total_time << " microseconds." << std::endl;
 }
