@@ -3,6 +3,16 @@
 
 #include "CSRMatrix.h"
 
+/*
+ * Implementation of a compressed sparse row matrix
+ * Capabilities:
+ *   - multiply by a vector
+ *   - multiply by a vector (in parallel using OpenMP
+ * 
+ * @author Lodewijk Brand
+ */
+
+
 using namespace std;
 
 double* CSRMatrix::multiply(double* vector){

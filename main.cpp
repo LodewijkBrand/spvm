@@ -6,6 +6,13 @@
 #include "CSRMatrix.h"
 #include "mmio.h"
 
+/*
+ * Driver method designed to take a set of MatrixMarket files
+ * as input and calculate the total runtime of parallel SPMV.
+ *
+ * @author Lodewijk Brand
+ */
+
 double random_in_range(double min, double max){
     double f = (double)rand() / RAND_MAX;
     return min + f * (max - min);

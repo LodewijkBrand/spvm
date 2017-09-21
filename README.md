@@ -1,8 +1,8 @@
 # spvm
 Parallel Implementation of Sparse Matrix Vector Multiplication
 
-Welcome to Lou's parallel implementation of a SPMV! Follow the instructions below
-to get up and running! Have fun!
+Welcome to Lou's parallel implementation of SPMV! Follow the instructions below
+to get up and running!
 
 Build Instructions
 ```bash

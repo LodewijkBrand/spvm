@@ -1,3 +1,11 @@
+/**
+ * Header file describing the functionality of a CSRMatrix.
+ * Designed using the Builder pattern:
+ * (https://en.wikipedia.org/wiki/Builder_pattern)
+ *
+ * @author Lodewijk Brand
+ */
+
 class CSRMatrix {
     public:
         class Builder;
